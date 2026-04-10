@@ -1,0 +1,27 @@
+{
+  "_comment": "Tunisian bank codes: bank_code (2 digits) -> bank name",
+  "bank_codes": {
+    "02": "STB",
+    "03": "UIB",
+    "04": "Attijari Bank",
+    "05": "BNA",
+    "07": "Amen Bank",
+    "08": "BIAT",
+    "10": "BT",
+    "11": "UBCI",
+    "12": "WIB",
+    "14": "BH",
+    "20": "BFT",
+    "21": "TQB",
+    "22": "ATB",
+    "23": "NAIB",
+    "24": "STUSID",
+    "25": "Citibank",
+    "26": "BFPME",
+    "27": "BTL",
+    "31": "BTS",
+    "32": "BTK",
+    "33": "BTI",
+    "45": "ABC"
+  }
+}

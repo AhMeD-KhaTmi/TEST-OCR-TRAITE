@@ -1,0 +1,153 @@
+{
+  "_comment": "ROI coordinates relative to aligned image (as fractions 0.0-1.0 of width/height). After alignment all docs are treated as 2150x1512. Padding fields get extra margin for stamp-affected regions.",
+  "reference_width": 2150,
+  "reference_height": 1512,
+  "stamp_affected_rois": ["R05", "R07", "R14", "R15", "R16"],
+  "rois": {
+    "R01": {
+      "name": "payment_order",
+      "label": "Ordre de paiement L-C N°",
+      "tier": 2,
+      "x": 0.780, "y": 0.080, "w": 0.180, "h": 0.080,
+      "padding": 0.05,
+      "ocr_engine": "tesseract",
+      "tesseract_config": "--psm 7 -c tessedit_char_whitelist=0123456789"
+    },
+    "R02": {
+      "name": "echeance_upper",
+      "label": "Échéance (upper)",
+      "tier": 1,
+      "x": 0.160, "y": 0.090, "w": 0.120, "h": 0.080,
+      "padding": 0.05,
+      "ocr_engine": "tesseract",
+      "tesseract_config": "--psm 7"
+    },
+    "R03": {
+      "name": "creation_date_upper",
+      "label": "Date de création (upper)",
+      "tier": 1,
+      "x": 0.320, "y": 0.090, "w": 0.115, "h": 0.080,
+      "padding": 0.05,
+      "ocr_engine": "tesseract",
+      "tesseract_config": "--psm 7"
+    },
+    "R04": {
+      "name": "city_upper",
+      "label": "Ville (upper)",
+      "tier": 3,
+      "x": 0.265, "y": 0.050, "w": 0.110, "h": 0.050,
+      "padding": 0.05,
+      "ocr_engine": "qwen"
+    },
+    "R05": {
+      "name": "rib_upper",
+      "label": "RIB (upper)",
+      "tier": 1,
+      "x": 0.080, "y": 0.165, "w": 0.330, "h": 0.085,
+      "padding": 0.15,
+      "ocr_engine": "tesseract_then_qwen",
+      "tesseract_config": "--psm 7 -c tessedit_char_whitelist=0123456789"
+    },
+    "R06": {
+      "name": "amount_upper",
+      "label": "Montant chiffres (upper)",
+      "tier": 1,
+      "x": 0.800, "y": 0.170, "w": 0.170, "h": 0.075,
+      "padding": 0.05,
+      "ocr_engine": "tesseract_then_qwen",
+      "tesseract_config": "--psm 7 -c tessedit_char_whitelist=0123456789,."
+    },
+    "R07": {
+      "name": "tireur",
+      "label": "Tireur",
+      "tier": 2,
+      "x": 0.000, "y": 0.250, "w": 0.150, "h": 0.085,
+      "padding": 0.15,
+      "ocr_engine": "qwen"
+    },
+    "R08": {
+      "name": "beneficiary",
+      "label": "Bénéficiaire (payer à l'ordre de)",
+      "tier": 2,
+      "x": 0.150, "y": 0.255, "w": 0.270, "h": 0.080,
+      "padding": 0.05,
+      "ocr_engine": "qwen"
+    },
+    "R09": {
+      "name": "amount_text",
+      "label": "Montant en lettres",
+      "tier": 1,
+      "x": 0.140, "y": 0.355, "w": 0.430, "h": 0.075,
+      "padding": 0.05,
+      "ocr_engine": "qwen"
+    },
+    "R10": {
+      "name": "amount_lower",
+      "label": "Montant chiffres (lower)",
+      "tier": 1,
+      "x": 0.800, "y": 0.265, "w": 0.170, "h": 0.080,
+      "padding": 0.05,
+      "ocr_engine": "tesseract_then_qwen",
+      "tesseract_config": "--psm 7 -c tessedit_char_whitelist=0123456789,."
+    },
+    "R11": {
+      "name": "city_lower",
+      "label": "Lieu de création (lower)",
+      "tier": 3,
+      "x": 0.000, "y": 0.465, "w": 0.100, "h": 0.065,
+      "padding": 0.05,
+      "ocr_engine": "qwen"
+    },
+    "R12": {
+      "name": "creation_date_lower",
+      "label": "Date de création (lower)",
+      "tier": 1,
+      "x": 0.100, "y": 0.460, "w": 0.130, "h": 0.070,
+      "padding": 0.05,
+      "ocr_engine": "tesseract",
+      "tesseract_config": "--psm 7"
+    },
+    "R13": {
+      "name": "echeance_lower",
+      "label": "Échéance (lower)",
+      "tier": 1,
+      "x": 0.230, "y": 0.460, "w": 0.130, "h": 0.070,
+      "padding": 0.05,
+      "ocr_engine": "tesseract",
+      "tesseract_config": "--psm 7"
+    },
+    "R14": {
+      "name": "rib_lower",
+      "label": "RIB (lower)",
+      "tier": 1,
+      "x": 0.000, "y": 0.545, "w": 0.300, "h": 0.085,
+      "padding": 0.15,
+      "ocr_engine": "tesseract_then_qwen",
+      "tesseract_config": "--psm 7 -c tessedit_char_whitelist=0123456789"
+    },
+    "R15": {
+      "name": "drawee",
+      "label": "Nom et adresse du Tiré",
+      "tier": 1,
+      "x": 0.295, "y": 0.610, "w": 0.270, "h": 0.130,
+      "padding": 0.15,
+      "ocr_engine": "qwen"
+    },
+    "R16": {
+      "name": "domiciliation",
+      "label": "Domiciliation",
+      "tier": 2,
+      "x": 0.660, "y": 0.560, "w": 0.340, "h": 0.170,
+      "padding": 0.15,
+      "ocr_engine": "qwen"
+    },
+    "R17": {
+      "name": "barcode",
+      "label": "Barcode",
+      "tier": 2,
+      "x": 0.460, "y": 0.860, "w": 0.370, "h": 0.085,
+      "padding": 0.02,
+      "ocr_engine": "barcode_decoder"
+    }
+  }
+}
