@@ -162,7 +162,7 @@ def amounts_equal(
 #       Mismatch with the numeric amount triggers a soft warning, not a hard failure.
 
 _UNITS = {
-    "zéro": 0, "zero": 0,
+    "zero": 0, "zéro": 0,
     "un": 1, "une": 1,
     "deux": 2, "trois": 3, "quatre": 4, "cinq": 5,
     "six": 6, "sept": 7, "huit": 8, "neuf": 9,
@@ -171,6 +171,37 @@ _UNITS = {
     "dix-sept": 17, "dix sept": 17,
     "dix-huit": 18, "dix huit": 18,
     "dix-neuf": 19, "dix neuf": 19,
+    # Compound 80+N forms (now directly tokenised with hyphens preserved)
+    "quatre-vingt-un": 81, "quatre-vingt-deux": 82, "quatre-vingt-trois": 83,
+    "quatre-vingt-quatre": 84, "quatre-vingt-cinq": 85, "quatre-vingt-six": 86,
+    "quatre-vingt-sept": 87, "quatre-vingt-huit": 88, "quatre-vingt-neuf": 89,
+    "quatre-vingt-dix": 90, "quatre-vingt-onze": 91, "quatre-vingt-douze": 92,
+    "quatre-vingt-treize": 93, "quatre-vingt-quatorze": 94, "quatre-vingt-quinze": 95,
+    "quatre-vingt-seize": 96,
+    # Compound vingt+N (21-29)
+    "vingt-et-un": 21, "vingt-et-une": 21, "vingt-deux": 22, "vingt-trois": 23,
+    "vingt-quatre": 24, "vingt-cinq": 25, "vingt-six": 26, "vingt-sept": 27,
+    "vingt-huit": 28, "vingt-neuf": 29,
+    # Compound trente+N
+    "trente-et-un": 31, "trente-deux": 32, "trente-trois": 33, "trente-quatre": 34,
+    "trente-cinq": 35, "trente-six": 36, "trente-sept": 37, "trente-huit": 38,
+    "trente-neuf": 39,
+    # Compound quarante+N
+    "quarante-et-un": 41, "quarante-deux": 42, "quarante-trois": 43,
+    "quarante-quatre": 44, "quarante-cinq": 45, "quarante-six": 46,
+    "quarante-sept": 47, "quarante-huit": 48, "quarante-neuf": 49,
+    # Compound cinquante+N
+    "cinquante-et-un": 51, "cinquante-deux": 52, "cinquante-trois": 53,
+    "cinquante-quatre": 54, "cinquante-cinq": 55, "cinquante-six": 56,
+    "cinquante-sept": 57, "cinquante-huit": 58, "cinquante-neuf": 59,
+    # Compound soixante+N (60-69)
+    "soixante-et-un": 61, "soixante-deux": 62, "soixante-trois": 63,
+    "soixante-quatre": 64, "soixante-cinq": 65, "soixante-six": 66,
+    "soixante-sept": 67, "soixante-huit": 68, "soixante-neuf": 69,
+    # Compound soixante-dix+N (71-79)
+    "soixante-et-onze": 71, "soixante-douze": 72, "soixante-treize": 73,
+    "soixante-quatorze": 74, "soixante-quinze": 75, "soixante-seize": 76,
+    "soixante-dix-sept": 77, "soixante-dix-huit": 78, "soixante-dix-neuf": 79,
 }
 
 _TENS = {
@@ -194,7 +225,13 @@ _MILLIME_WORDS = {"millime", "millimes", "m"}
 
 
 def _tokenise(text: str) -> list[str]:
-    """Lower-case, strip accents lightly, split into word tokens."""
+    """Lower-case, strip accents lightly, split into word tokens.
+
+    NOTE: hyphens are kept intact because compound French number words
+    such as ``vingt-cinq`` and ``quatre-vingt-dix`` appear as single
+    entries in _UNITS / _TENS and must be looked up as one token.
+    Only whitespace, commas, and semicolons are used as delimiters.
+    """
     text = text.lower()
     # Normalise common accented chars
     text = (
@@ -202,7 +239,7 @@ def _tokenise(text: str) -> list[str]:
             .replace("à", "a").replace("â", "a")
             .replace("ô", "o").replace("û", "u").replace("î", "i")
     )
-    # Replace hyphens with spaces for compound numbers (handled by multi-word lookup first)
+    # Split on whitespace/commas/semicolons ONLY — preserve hyphens
     tokens = re.split(r"[\s,;]+", text.strip())
     return [t for t in tokens if t]
 
@@ -286,19 +323,24 @@ def parse_amount_words(raw: str) -> AmountWordsResult:
         result.error = "Empty string"
         return result
 
-    # Split into dinar section and millime section at the currency word
+    # Split into dinar section and millime section at the currency word.
+    # State machine:
+    #   "dinar"   → switch to "after_dinar" (tokens go to millime bucket)
+    #   "millime" → same state (millimes keyword itself is skipped)
+    # Everything before the first dinar word → dinar_tokens
+    # Everything after the first dinar word   → millime_tokens
     dinar_tokens: list[str] = []
     millime_tokens: list[str] = []
-    in_millime = False
+    seen_dinar = False
 
     for tok in tokens:
         if tok in _DINAR_WORDS:
-            in_millime = False  # reset — millimes come after dinars
+            seen_dinar = True
             continue
         if tok in _MILLIME_WORDS:
-            in_millime = True
+            seen_dinar = True  # treat as boundary too
             continue
-        if in_millime:
+        if seen_dinar:
             millime_tokens.append(tok)
         else:
             dinar_tokens.append(tok)

@@ -117,14 +117,11 @@ class DocumentResult:
 # ---------------------------------------------------------------------------
 
 def _get_field(batch: OCRBatch, roi_id: str) -> Optional[OCRFieldResult]:
-    for f in batch.fields:
-        if f.roi_id == roi_id:
-            return f
-    return None
+    return batch.fields.get(roi_id)
 
 
 def _text(field: Optional[OCRFieldResult]) -> str:
-    return field.final_text if field else ""
+    return field.text if field else ""
 
 
 def _conf(field: Optional[OCRFieldResult]) -> float:
@@ -236,7 +233,7 @@ def build_document_result(
         barcode_number=_text(r17),
     )
 
-    ocr_confs = {f.roi_id: f.confidence for f in batch.fields}
+    ocr_confs = {f.roi_id: f.confidence for f in batch.fields.values()}
     report: ValidationReport = validate_document(parsed, ocr_confs)
 
     # ----------------------------------------------------------------
@@ -349,12 +346,10 @@ def build_document_result(
     # Qwen corrections summary
     # ----------------------------------------------------------------
     qwen_corr = QwenCorrections(source="tesseract_only")
-    for f in batch.fields:
-        if f.rule_applied in ("rule2_disagree_use_qwen",):
+    for f in batch.fields.values():
+        if getattr(f, "source", "") == "qwen":
             qwen_corr.source = "qwen_fallback"
             break
-        if f.rule_applied == "rule0_qwen_unavailable":
-            qwen_corr.source = "tesseract_only"
 
     # ----------------------------------------------------------------
     # Flagged fields

@@ -63,8 +63,9 @@ def _normalise_whitespace(s: str) -> str:
 
 def _strip_common_ocr_noise(s: str) -> str:
     """Remove stray OCR characters unlikely to be part of a name."""
-    # Remove lone punctuation runs that are clearly OCR noise (not part of abbreviation)
-    s = re.sub(r"(?<!\w)[|\\]{1,3}(?!\w)", " ", s)
+    # Remove pipe and backslash characters in any position — they are never
+    # part of a Tunisian name or company name and are pure OCR noise.
+    s = re.sub(r"[|\\]+", " ", s)
     return s
 
 
