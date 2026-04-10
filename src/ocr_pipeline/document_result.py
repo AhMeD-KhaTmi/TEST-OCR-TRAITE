@@ -1,13 +1,16 @@
 """
-Phase 3 — Document result: full JSON output schema.
+Phase 3 & 4 — Document result: full JSON output schema.
 
 Assembles the final structured output for a single Lettre de Change document
 by combining the OCR engine output (Phase 2) with the parsed and validated
-results (Phase 3 parsers + validator).
+results (Phase 3 parsers + validator) and the Phase 4 stamp detection
++ anomaly explanation pass.
 
 Public API
 ----------
-build_document_result(doc_id, ocr_batch_result, *, skip_qwen=False) -> DocumentResult
+build_document_result(
+    doc_id, batch, *, document_image=None, skip_pass3=True
+) -> DocumentResult
 document_result_to_dict(result: DocumentResult) -> dict
 """
 
@@ -20,6 +23,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Optional, Any
 
+import numpy as np
+
 from .ocr_engine import OCRBatch, OCRFieldResult
 from .rib_parser import parse_rib, RIBResult
 from .date_parser import parse_date, DateResult
@@ -30,6 +35,8 @@ from .validator import (
     ValidationReport,
     validate_document,
 )
+from .stamp_detector import detect_stamps, StampDetectionResult
+from .anomaly_explainer import explain_anomalies, build_stamp_hints, AnomalyExplanation
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +84,15 @@ class FlaggedField:
     error_type: str
     message: str
     is_hard_failure: bool = False
+    anomaly_explanation: str = ""   # Pass 3 explanation (informational only)
+
+
+@dataclass
+class StampInfo:
+    """Summary of stamp detection results for the document."""
+    stamp_count: int = 0
+    affected_rois: list[str] = dc_field(default_factory=list)
+    hints: list[str] = dc_field(default_factory=list)
 
 
 @dataclass
@@ -110,6 +126,8 @@ class DocumentResult:
     needs_human_review: bool
     qwen_corrections: QwenCorrections
     flagged_fields: list[FlaggedField] = dc_field(default_factory=list)
+    stamp_info: StampInfo = dc_field(default_factory=StampInfo)
+    anomaly_explanation: str = ""   # Pass 3 LLM output (informational only)
 
 
 # ---------------------------------------------------------------------------
@@ -165,10 +183,26 @@ def _best_rib(upper: Optional[RIBResult], lower: Optional[RIBResult]) -> tuple[O
 def build_document_result(
     doc_id: str,
     batch: OCRBatch,
+    *,
+    document_image: Optional[np.ndarray] = None,
+    skip_pass3: bool = True,
 ) -> DocumentResult:
     """Build the final document result from a completed OCR batch.
 
-    Runs all Phase 3 parsers and the validator internally.
+    Runs Phase 3 parsers + validator internally, and optionally:
+    - Phase 4 stamp detection (always, if document_image is provided)
+    - Phase 4 Pass 3 anomaly explanation (only if skip_pass3=False and
+      document_image is provided and there are flagged fields)
+
+    Args:
+        doc_id:         Document identifier string.
+        batch:          Completed OCR batch from ocr_engine.run_ocr().
+        document_image: Full aligned BGR document image (required for
+                        stamp detection and Pass 3).  May be None to
+                        skip all Phase 4 processing.
+        skip_pass3:     If True (default), skip the LLM anomaly explanation
+                        call even when document_image is provided.  Set to
+                        False only when running with live Qwen inference.
     """
     ts = datetime.utcnow().isoformat() + "Z"
 
@@ -352,6 +386,7 @@ def build_document_result(
             break
 
     # ----------------------------------------------------------------
+    # ----------------------------------------------------------------
     # Flagged fields
     # ----------------------------------------------------------------
     flagged = [
@@ -363,6 +398,44 @@ def build_document_result(
         )
         for fl in report.flags
     ]
+
+    # ----------------------------------------------------------------
+    # Phase 4 — Stamp detection
+    # ----------------------------------------------------------------
+    stamp_info = StampInfo()
+    anomaly_explanation = ""
+
+    if document_image is not None and document_image.size > 0:
+        stamp_result: StampDetectionResult = detect_stamps(document_image)
+        stamp_hints = build_stamp_hints(stamp_result.stamps)
+        stamp_info = StampInfo(
+            stamp_count=stamp_result.count,
+            affected_rois=[],   # ROI overlap filled by verify_phase4.py which has config
+            hints=stamp_hints,
+        )
+
+        # ----------------------------------------------------------------
+        # Phase 4 — Pass 3 anomaly explanation
+        # ----------------------------------------------------------------
+        if not skip_pass3 and flagged:
+            flagged_names = [f.field for f in flagged]
+            extracted_summary = {
+                "rib": (rib_value.full if rib_value else ""),
+                "amount": (str(amount_value.value_numeric) if amount_value else ""),
+                "echeance": (echeance_fv.value if echeance_fv else ""),
+                "creation_date": (creation_fv.value if creation_fv else ""),
+            }
+            anom: AnomalyExplanation = explain_anomalies(
+                document_image=document_image,
+                flagged_fields=flagged_names,
+                extracted_summary=extracted_summary,
+                stamp_hints=stamp_hints,
+                skip=skip_pass3,
+            )
+            anomaly_explanation = anom.explanation
+            # Attach explanation to each flagged field
+            for ff in flagged:
+                ff.anomaly_explanation = anom.explanation
 
     return DocumentResult(
         document_id=doc_id,
@@ -388,6 +461,8 @@ def build_document_result(
         needs_human_review=report.needs_human_review,
         qwen_corrections=qwen_corr,
         flagged_fields=flagged,
+        stamp_info=stamp_info,
+        anomaly_explanation=anomaly_explanation,
     )
 
 
